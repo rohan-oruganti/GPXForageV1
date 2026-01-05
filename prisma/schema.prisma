@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id // Auth0 sub
+  email     String   @unique
+  role      String   @default("user") // "user" | "admin"
+  createdAt DateTime @default(now())
+  jobs      MergeJob[]
+}
+
+model MergeJob {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  status        String        @default("PENDING") // PENDING, UPLOADING, PROCESSING, COMPLETED, FAILED
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  fragments     GpxFragment[]
+  mergedFileKey String? // S3 key for result
+  logs          String? // Processing logs
+}
+
+model GpxFragment {
+  id           String   @id @default(cuid())
+  jobId        String
+  job          MergeJob @relation(fields: [jobId], references: [id])
+  s3Key        String // S3 key for this fragment
+  order        Int // Order in merge
+  originalName String
+  uploadedAt   DateTime @default(now())
+}
