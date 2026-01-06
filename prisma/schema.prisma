@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  auth0Sub  String     @unique // Auth0 user ID
+  email     String     @unique
+  role      String     @default("user") // "user" | "admin"
+  createdAt DateTime   @default(now())
+  jobs      MergeJob[]
+}
+
+model MergeJob {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  status       String         @default("PENDING") // PENDING, UPLOADING, PROCESSING, COMPLETED, FAILED
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  startedAt    DateTime?      // When processing began
+  finishedAt   DateTime?      // When processing ended
+  errorMessage String?        // If failed
+  
+  fragmentFiles FragmentFile[]
+  outputFiles   OutputFile[]
+}
+
+model FragmentFile {
+  id               String   @id @default(cuid())
+  mergeJobId       String
+  mergeJob         MergeJob @relation(fields: [mergeJobId], references: [id], onDelete: Cascade)
+  originalFilename String
+  storageKey       String   // S3 key
+  pointCount       Int      @default(0)
+  startTime        DateTime?
+  endTime          DateTime?
+  createdAt        DateTime @default(now())
+}
+
+model OutputFile {
+  id          String   @id @default(cuid())
+  mergeJobId  String
+  mergeJob    MergeJob @relation(fields: [mergeJobId], references: [id], onDelete: Cascade)
+  storageKey  String   // S3 key
+  pointCount  Int      @default(0)
+  startTime   DateTime?
+  endTime     DateTime?
+  createdAt   DateTime @default(now())
+}
