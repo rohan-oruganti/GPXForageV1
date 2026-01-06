@@ -12,9 +12,13 @@ export async function GET(req: Request) {
 
     try {
         const jobs = await db.mergeJob.findMany({
-            where: { userId: sub },
+            where: {
+                user: {
+                    auth0Sub: sub
+                }
+            },
             orderBy: { createdAt: 'desc' },
-            include: { fragments: true },
+            include: { fragmentFiles: true },
         });
         return NextResponse.json(jobs);
     } catch (error) {
@@ -32,17 +36,20 @@ export async function POST(req: Request) {
     const { sub, email } = session.user;
 
     try {
-        // Ensure user exists
-        let user = await db.user.findUnique({ where: { id: sub } });
+        // Ensure user exists (sync with Auth0)
+        let user = await db.user.findUnique({
+            where: { auth0Sub: sub }
+        });
+
         if (!user) {
             if (!email) {
-                return new NextResponse('User email required', { status: 400 });
+                return new NextResponse('User email required to create account', { status: 400 });
             }
             user = await db.user.create({
                 data: {
-                    id: sub,
+                    auth0Sub: sub,
                     email: email,
-                    role: 'user', // Default role
+                    role: 'user',
                 },
             });
         }

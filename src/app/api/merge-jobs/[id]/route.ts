@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     try {
         const job = await db.mergeJob.findUnique({
             where: { id },
-            include: { fragments: { orderBy: { order: 'asc' } } },
+            include: { fragmentFiles: { orderBy: { createdAt: 'asc' } } },
         });
 
         if (!job) {

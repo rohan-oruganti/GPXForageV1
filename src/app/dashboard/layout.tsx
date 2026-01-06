@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { LogOut, LayoutDashboard, Plus } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({
@@ -13,52 +13,54 @@ export default function DashboardLayout({
     const { user } = useUser();
 
     return (
-        <div className="flex min-h-screen bg-neutral-50 dark:bg-neutral-950">
-            {/* Sidebar */}
-            <aside className="w-64 border-r border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hidden md:flex flex-col">
-                <div className="p-6 border-b border-neutral-200 dark:border-neutral-800">
-                    <Link href="/" className="font-bold text-xl tracking-tighter flex items-center gap-2">
-                        <span>GPX<span className="text-orange-600">Forage</span></span>
-                    </Link>
-                </div>
+        <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/30">
+            {/* Top Navigation Bar */}
+            <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+                <div className="container flex h-16 items-center justify-between px-4 sm:px-8 max-w-7xl mx-auto">
+                    <div className="flex items-center gap-8">
+                        {/* Logo */}
+                        <Link href="/" className="flex items-center gap-3 group">
+                            <img
+                                src="/logo.png"
+                                alt="GPXForage"
+                                className="h-12 w-12 object-cover rounded-full transition-transform duration-300 group-hover:scale-105 shadow-md"
+                            />
+                            <span className="font-bold text-xl tracking-tighter">GPXForage</span>
+                        </Link>
 
-                <nav className="flex-1 p-4 space-y-2">
-                    <Link href="/dashboard">
-                        <Button variant="ghost" className="w-full justify-start gap-2">
-                            <LayoutDashboard className="size-4" />
-                            My Jobs
-                        </Button>
-                    </Link>
-                </nav>
-
-                <div className="p-4 border-t border-neutral-200 dark:border-neutral-800">
-                    <div className="flex items-center gap-3 px-2 mb-4">
-                        {user?.picture && <img src={user.picture} alt="User" className="size-8 rounded-full" />}
-                        <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-medium truncate">{user?.name}</p>
-                            <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
-                        </div>
+                        {/* Desktop Nav */}
+                        <nav className="hidden md:flex items-center gap-6">
+                            <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
+                                Route Library
+                            </Link>
+                        </nav>
                     </div>
-                    <Link href="/api/auth/logout">
-                        <Button variant="outline" className="w-full gap-2">
-                            <LogOut className="size-4" /> Sign Out
-                        </Button>
-                    </Link>
+
+                    {/* User Profile */}
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="hidden md:block text-right">
+                                <p className="text-sm font-medium leading-none">{user?.name}</p>
+                            </div>
+                            {user?.picture ? (
+                                <img src={user.picture} alt="User" className="size-9 rounded-full ring-2 ring-border" />
+                            ) : (
+                                <div className="size-9 rounded-full bg-secondary" />
+                            )}
+                        </div>
+                        <Link href="/api/auth/logout" title="Log Out">
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                                <LogOut className="size-5" />
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
-            </aside>
+            </header>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col">
-                <header className="h-16 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-center justify-between px-6 md:hidden">
-                    <Link href="/" className="font-bold text-xl">GPXForage</Link>
-                    <Link href="/api/auth/logout">
-                        <LogOut className="size-5" />
-                    </Link>
-                </header>
-                <main className="flex-1 p-6 md:p-8 overflow-auto">
-                    {children}
-                </main>
-            </div>
+            <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-8">
+                {children}
+            </main>
         </div>
     );
 }

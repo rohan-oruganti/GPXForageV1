@@ -59,53 +59,63 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
+        <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Your Merges</h1>
-                    <p className="text-neutral-500">Manage and create GPX merge jobs.</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Activity Library</h1>
+                    <p className="text-muted-foreground">All your adventures in one place!</p>
                 </div>
-                <Button onClick={createJob} disabled={creating} size="lg" className="bg-orange-600 hover:bg-orange-700">
+                <Button onClick={createJob} disabled={creating} size="lg" className="shadow-lg transition-transform hover:scale-105 active:scale-95">
                     {creating ? <Loader2 className="animate-spin mr-2" /> : <Plus className="mr-2 size-4" />}
-                    New Merge
+                    Add New Route
                 </Button>
             </div>
 
             {loading ? (
-                <div className="flex justify-center py-12">
-                    <Loader2 className="size-8 animate-spin text-neutral-400" />
+                <div className="flex justify-center py-24">
+                    <Loader2 className="size-10 animate-spin text-primary" />
                 </div>
             ) : jobs.length === 0 ? (
-                <Card className="border-dashed border-2">
-                    <CardContent className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                        <div className="p-4 rounded-full bg-orange-100 dark:bg-orange-900/20">
-                            <FileCode className="size-8 text-orange-600" />
+                <Card className="border-dashed border-2 bg-card/50">
+                    <CardContent className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+                        <div className="p-5 rounded-full bg-primary/10">
+                            <FileCode className="size-10 text-primary" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-medium">No jobs yet</h3>
-                            <p className="text-muted-foreground max-w-sm mx-auto">
-                                Create your first job to start merging multiple GPX files into one track.
+                            <h3 className="text-xl font-bold text-card-foreground">Ready to map your adventure?</h3>
+                            <p className="text-muted-foreground max-w-sm mx-auto mt-2">
+                                Combine scattered GPX tracks from different devices into one epic continuous route.
                             </p>
                         </div>
-                        <Button onClick={createJob} disabled={creating} variant="outline">Create Job</Button>
+                        <Button onClick={createJob} disabled={creating} variant="outline" className="mt-4">Start </Button>
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {jobs.map(job => (
-                        <Link href={`/dashboard/jobs/${job.id}`} key={job.id}>
-                            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full border-neutral-200 dark:border-neutral-800">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <div className="font-medium truncate text-sm text-muted-foreground">ID: {job.id.slice(0, 8)}...</div>
+                        <Link href={`/dashboard/jobs/${job.id}`} key={job.id} className="group block h-full">
+                            <Card className="h-full border border-border/50 bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                                    <div className="font-mono text-xs text-primary/80 uppercase tracking-widest">
+                                        ID: {job.id.slice(-6)}
+                                    </div>
                                     <StatusIcon status={job.status} />
                                 </CardHeader>
                                 <CardContent>
-                                    <CardTitle className="text-lg mb-2">Merge Job</CardTitle>
-                                    <CardDescription>
-                                        Started {new Date(job.createdAt).toLocaleDateString()}
+                                    <CardTitle className="text-xl font-bold text-card-foreground mb-1 group-hover:text-primary transition-colors">
+                                        Untitled Route
+                                    </CardTitle>
+                                    <CardDescription className="text-muted-foreground">
+                                        Created {new Date(job.createdAt).toLocaleDateString(undefined, {
+                                            month: 'short', day: 'numeric', year: 'numeric'
+                                        })}
                                     </CardDescription>
-                                    <div className="mt-4 flex items-center gap-2 text-xs text-neutral-500">
-                                        <span>{job.fragments?.length || 0} fragments</span>
+
+                                    <div className="mt-6 flex items-center gap-3">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-xs font-medium text-secondary-foreground">
+                                            <FileCode className="size-3" />
+                                            <span>{job.fragmentFiles?.length || job.fragments?.length || 0} fragments</span>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

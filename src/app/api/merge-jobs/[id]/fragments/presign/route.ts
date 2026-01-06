@@ -19,8 +19,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!job) {
             return new NextResponse('Job not found', { status: 404 });
         }
-        if (job.userId !== sub) {
-            return new NextResponse('Forbidden', { status: 403 });
+        if (job.userId) {
+            const user = await db.user.findUnique({ where: { id: job.userId } });
+            if (user?.auth0Sub !== sub) {
+                return new NextResponse('Forbidden', { status: 403 });
+            }
         }
 
         const body = await req.json();
@@ -32,28 +35,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         const result = [];
 
-        // Get current fragment count to determine order
-        const currentCount = await db.gpxFragment.count({ where: { jobId: id } });
+        // Create DB records using new FragmentFile model (no order or count needed)
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            const order = currentCount + i;
 
             // Create DB record
-            const fragment = await db.gpxFragment.create({
+            const fragment = await db.fragmentFile.create({
                 data: {
-                    jobId: id,
-                    originalName: file.name,
-                    s3Key: `jobs/${id}/fragments/${Date.now()}-${i}.gpx`, // temp key
-                    order: order,
+                    mergeJobId: id,
+                    originalFilename: file.name,
+                    storageKey: `jobs/${id}/fragments/${Date.now()}-${i}.gpx`,
                 }
             });
 
             // Generate Presigned URL
             const command = new PutObjectCommand({
                 Bucket: BUCKET_NAME,
-                Key: fragment.s3Key,
-                ContentType: 'application/gpx+xml', // Enforce type
+                Key: fragment.storageKey,
+                ContentType: 'application/gpx+xml',
             });
 
             const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
@@ -62,7 +62,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
                 fragmentId: fragment.id,
                 originalName: file.name,
                 url,
-                key: fragment.s3Key
+                key: fragment.storageKey
             });
         }
 

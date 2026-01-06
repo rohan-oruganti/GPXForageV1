@@ -64,23 +64,23 @@ export default function JobWorkspacePage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        Merge Job #{job.id.slice(0, 6)}
+                        Route Compilation #{job.id.slice(0, 6)}
                         <Badge variant={job.status === 'COMPLETED' ? "default" : "secondary"}>
-                            {job.status}
+                            {job.status === 'PROCESSING' ? 'STITCHING' : job.status}
                         </Badge>
                     </h1>
                     <p className="text-muted-foreground text-sm">Created {new Date(job.createdAt).toLocaleString()}</p>
                 </div>
                 <div className="flex gap-2">
                     {job.fragments?.length > 0 && job.status !== 'COMPLETED' && (
-                        <Button onClick={runMerge} disabled={merging}>
+                        <Button onClick={runMerge} disabled={merging} className="bg-primary text-primary-foreground hover:bg-primary/90">
                             {merging ? <Loader2 className="animate-spin mr-2 size-4" /> : <Play className="mr-2 size-4" />}
-                            Run Merge
+                            Stitch Tracks
                         </Button>
                     )}
                     {job.status === 'COMPLETED' && (
-                        <Button onClick={downloadMerged} variant="default" className="bg-green-600 hover:bg-green-700">
-                            <Download className="mr-2 size-4" /> Download GPX
+                        <Button onClick={downloadMerged} variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:scale-105 transition-transform">
+                            <Download className="mr-2 size-4" /> Download Route
                         </Button>
                     )}
                 </div>
@@ -90,28 +90,28 @@ export default function JobWorkspacePage() {
                 {/* Left Col: Upload & Fragments */}
                 <div className="md:col-span-1 space-y-6">
                     {job.status !== 'COMPLETED' && (
-                        <Card>
-                            <CardHeader><CardTitle className="text-base">Upload Fragments</CardTitle></CardHeader>
+                        <Card className="bg-card border-dashed border-2 border-border/60 hover:border-primary/40 transition-colors">
+                            <CardHeader><CardTitle className="text-base text-foreground">Add Track Segments</CardTitle></CardHeader>
                             <CardContent>
                                 <UploadDropzone jobId={job.id} onUploadComplete={refresh} />
                             </CardContent>
                         </Card>
                     )}
 
-                    <Card>
-                        <CardHeader><CardTitle className="text-base">Fragments ({job.fragments?.length || 0})</CardTitle></CardHeader>
+                    <Card className="bg-card">
+                        <CardHeader><CardTitle className="text-base text-card-foreground">Track Segments ({job.fragments?.length || 0})</CardTitle></CardHeader>
                         <CardContent className="space-y-2">
                             {job.fragments?.map((f: any, i: number) => (
-                                <div key={f.id} className="flex items-center gap-2 text-sm p-2 bg-neutral-100 dark:bg-neutral-800 rounded">
-                                    <div className="size-6 bg-white dark:bg-neutral-700 rounded flex items-center justify-center font-mono text-xs">
+                                <div key={f.id} className="flex items-center gap-2 text-sm p-3 bg-secondary/50 rounded-lg border border-border/50">
+                                    <div className="size-6 bg-background rounded flex items-center justify-center font-mono text-xs font-bold text-muted-foreground border">
                                         {i + 1}
                                     </div>
-                                    <span className="truncate flex-1">{f.originalName}</span>
-                                    <Badge variant="outline" className="text-xs">GPX</Badge>
+                                    <span className="truncate flex-1 text-foreground font-medium">{f.originalName}</span>
+                                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border">GPX</Badge>
                                 </div>
                             ))}
                             {(!job.fragments || job.fragments.length === 0) && (
-                                <p className="text-sm text-muted-foreground text-center py-4">No fragments uploaded yet.</p>
+                                <p className="text-sm text-muted-foreground text-center py-4 italic">No tracks uploaded yet.</p>
                             )}
                         </CardContent>
                     </Card>
@@ -119,18 +119,19 @@ export default function JobWorkspacePage() {
 
                 {/* Right Col: Preview */}
                 <div className="md:col-span-2">
-                    <Card className="h-[600px] flex flex-col">
-                        <CardHeader className="py-4 border-b">
-                            <CardTitle className="text-base flex items-center gap-2"><MapPin className="size-4" /> Map Preview</CardTitle>
+                    <Card className="h-[600px] flex flex-col bg-card overflow-hidden border-border/50 relative group">
+                        <CardHeader className="py-4 border-b border-border/50 bg-background/50 backdrop-blur z-10 absolute w-full">
+                            <CardTitle className="text-base flex items-center gap-2 text-foreground"><MapPin className="size-4 text-primary" /> Route Visualization</CardTitle>
                         </CardHeader>
                         <CardContent className="flex-1 p-0 relative bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
                             {job.status === 'COMPLETED' ? (
                                 <MapPreview gpxUrl={`/api/merge-jobs/${job.id}/download`} />
                             ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                    <div className="text-center">
-                                        <MapPin className="size-10 mx-auto mb-2 opacity-50" />
-                                        <p>Map available after merge</p>
+                                <div className="flex items-center justify-center h-full text-muted-foreground bg-secondary/20">
+                                    <div className="text-center p-8 rounded-2xl bg-background/80 backdrop-blur border border-border/50 shadow-sm">
+                                        <MapPin className="size-12 mx-auto mb-4 text-primary/40" />
+                                        <h3 className="text-lg font-bold text-foreground">No Route Preview</h3>
+                                        <p className="text-sm">Upload and stitch your tracks to see the route here.</p>
                                     </div>
                                 </div>
                             )}

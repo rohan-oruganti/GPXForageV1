@@ -17,30 +17,31 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     try {
         const job = await db.mergeJob.findUnique({
             where: { id },
-            include: { fragments: { orderBy: { order: 'asc' } } }
+            include: { fragmentFiles: { orderBy: { createdAt: 'asc' } } }
         });
 
         if (!job) return new NextResponse('Job not found', { status: 404 });
-        if (!job) return new NextResponse('Job not found', { status: 404 });
 
         // Admin or Owner check
-        if (job.userId !== sub) {
-            const user = await db.user.findUnique({ where: { id: sub } });
-            if (user?.role !== 'admin') return new NextResponse('Forbidden', { status: 403 });
+        if (job.userId) {
+            const user = await db.user.findUnique({ where: { id: job.userId } });
+            if (user?.auth0Sub !== sub && user?.role !== 'admin') {
+                return new NextResponse('Forbidden', { status: 403 });
+            }
         }
 
         // Update status
         await db.mergeJob.update({
             where: { id },
-            data: { status: 'PROCESSING' }
+            data: { status: 'PROCESSING', startedAt: new Date() }
         });
 
         // Download fragments
         const fileContents = [];
-        for (const fragment of job.fragments) {
+        for (const fragment of job.fragmentFiles) {
             const command = new GetObjectCommand({
                 Bucket: BUCKET_NAME,
-                Key: fragment.s3Key,
+                Key: fragment.storageKey,
             });
             const response = await s3Client.send(command);
             const str = await response.Body?.transformToString();
@@ -50,7 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (fileContents.length === 0) {
             await db.mergeJob.update({
                 where: { id },
-                data: { status: 'FAILED', logs: 'No fragments found' }
+                data: { status: 'FAILED', errorMessage: 'No fragments found' }
             });
             return new NextResponse('No fragments', { status: 400 });
         }
@@ -67,12 +68,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             ContentType: 'application/gpx+xml',
         }));
 
+        // Create Output File Record
+        await db.outputFile.create({
+            data: {
+                mergeJobId: id,
+                storageKey: resultKey,
+                pointCount: 0, // Calculate this if possible from mergedGpx
+            }
+        });
+
         // Update Job
         await db.mergeJob.update({
             where: { id },
             data: {
                 status: 'COMPLETED',
-                mergedFileKey: resultKey,
+                finishedAt: new Date(),
             }
         });
 
@@ -82,7 +92,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         console.error('Error running job:', error);
         await db.mergeJob.update({
             where: { id },
-            data: { status: 'FAILED', logs: error.message }
+            data: { status: 'FAILED', errorMessage: error.message }
         });
         return new NextResponse('Internal Server Error', { status: 500 });
     }

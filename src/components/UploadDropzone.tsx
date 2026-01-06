@@ -52,8 +52,11 @@ export default function UploadDropzone({ jobId, onUploadComplete }: UploadDropzo
 
     return (
         <div
-            className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center text-center transition-colors cursor-pointer
-                ${dragging ? 'border-orange-500 bg-orange-50/50' : 'border-neutral-200 dark:border-neutral-800 hover:border-orange-500/50'}
+            className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center text-center transition-all duration-300 cursor-pointer
+                ${dragging
+                    ? 'border-primary bg-primary/5 scale-[1.02]'
+                    : 'border-border hover:border-primary/50 hover:bg-neutral-50'
+                }
             `}
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
@@ -75,18 +78,19 @@ export default function UploadDropzone({ jobId, onUploadComplete }: UploadDropzo
 
             {uploading ? (
                 <div className="space-y-4">
-                    <Loader2 className="size-10 animate-spin text-orange-500 mx-auto" />
-                    <p className="text-sm text-muted-foreground">Uploading fragments...</p>
+                    <Loader2 className="size-10 animate-spin text-primary mx-auto" />
+                    <p className="text-sm font-medium text-foreground">Uploading fragments...</p>
                 </div>
             ) : (
-                <label htmlFor="file-upload" className="cursor-pointer space-y-4 w-full h-full flex flex-col items-center">
-                    <div className="p-4 rounded-full bg-neutral-100 dark:bg-neutral-800">
-                        <UploadCloud className="size-8 text-neutral-500" />
+                <label htmlFor="file-upload" className="cursor-pointer space-y-4 w-full h-full flex flex-col items-center group">
+                    <div className="p-5 rounded-full bg-secondary transition-colors group-hover:bg-primary/10">
+                        <UploadCloud className="size-10 text-muted-foreground transition-colors group-hover:text-primary" />
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-lg">Click to upload or drag and drop</h3>
-                        <p className="text-sm text-muted-foreground">GPX files only</p>
+                    <div className="space-y-1">
+                        <h3 className="font-bold text-lg text-foreground">Click to upload or drag and drop</h3>
+                        <p className="text-sm text-muted-foreground">GPX files only (Max 10MB each)</p>
                     </div>
+                    <Button variant="secondary" className="mt-4 pointer-events-none">Select Files</Button>
                 </label>
             )}
         </div>
