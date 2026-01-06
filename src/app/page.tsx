@@ -14,8 +14,8 @@ export default function Home() {
       {/* Header */}
       <header className="px-6 h-16 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-2 font-bold text-xl tracking-tighter">
-          <Layers className="size-6 text-orange-500" />
-          <span>GPX<span className="text-orange-500">Forage</span></span>
+          <Layers className="size-6 text-green-500" />
+          <span>GPX<span className="text-green-500">Forage</span></span>
         </div>
         <nav className="flex items-center gap-4">
           {!isLoading && user ? (
@@ -26,7 +26,7 @@ export default function Home() {
             </Link>
           ) : (
             <Link href="/api/auth/login">
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white font-medium">
+              <Button className="bg-green-600 hover:bg-green-700 text-black font-bold">
                 Sign In / Join
               </Button>
             </Link>
@@ -37,9 +37,9 @@ export default function Home() {
       {/* Hero */}
       <main className="flex-1 flex flex-col">
         <section className="relative py-24 lg:py-32 px-6 flex flex-col items-center text-center overflow-hidden">
-          <div className="absolute inset-0 z-0 opacity-30">
-            <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-orange-600/40 rounded-full blur-[120px]" />
-            <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-blue-600/20 rounded-full blur-[120px]" />
+          <div className="absolute inset-0 z-0 opacity-20">
+            <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-green-600/40 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-emerald-600/20 rounded-full blur-[120px]" />
           </div>
 
           <motion.div
@@ -48,20 +48,21 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="relative z-10 max-w-4xl mx-auto space-y-6"
           >
-            <div className="inline-block px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-medium mb-4">
-              v1.0 Now Available
+            <div className="inline-block px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium mb-4">
+              Multi-Device Support
             </div>
             <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60">
-              Merge GPX Files <br /> Like a Pro.
+              Combine Your Route <br /> Into One Epic Story.
             </h1>
             <p className="text-lg text-neutral-400 max-w-2xl mx-auto">
-              Combine fragmented GPS tracks into seamless adventures.
-              Visualize, edit, and export in seconds.
+              Battery died mid-hike? Tracking across two watches?
+              Effortlessly merge scattered GPX fragments into a single, continuous file
+              based on matching timestamps and coordinates.
             </p>
             <div className="pt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href={user ? "/dashboard" : "/api/auth/login"}>
-                <Button size="lg" className="h-12 px-8 text-base bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg shadow-orange-900/20 transition-all hover:scale-105 active:scale-95">
-                  {user ? "Go to Dashboard" : "Start Merging Now"} <ArrowRight className="ml-2 size-4" />
+                <Button size="lg" className="h-12 px-8 text-base bg-green-600 hover:bg-green-500 text-black font-bold rounded-full shadow-lg shadow-green-900/20 transition-all hover:scale-105 active:scale-95">
+                  {user ? "Go to Dashboard" : "Start Foraging"} <ArrowRight className="ml-2 size-4" />
                 </Button>
               </Link>
             </div>
@@ -72,19 +73,19 @@ export default function Home() {
         <section className="py-24 px-6 bg-neutral-900/50">
           <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
             <FeatureCard
-              icon={<Zap className="size-6 text-yellow-400" />}
-              title="Lightning Fast"
-              description="Process massive GPX files in milliseconds using our optimized parsing engine."
-            />
-            <FeatureCard
-              icon={<Map className="size-6 text-blue-400" />}
-              title="Interactive Maps"
-              description="Preview your routes on detailed interactive maps before downloading."
-            />
-            <FeatureCard
-              icon={<Layers className="size-6 text-purple-400" />}
+              icon={<Zap className="size-6 text-green-400" />}
               title="Seamless Merge"
-              description="Smartly joins track segments while preserving waypoints and metadata."
+              description="Combine Hike, Run, Swim, or Cycle tracks. We intelligently stitch fragments using elevation, time, and distance markers."
+            />
+            <FeatureCard
+              icon={<Map className="size-6 text-emerald-400" />}
+              title="Interactive Maps"
+              description="Preview your full unified route on detailed maps to ensure every turn is captured correctly."
+            />
+            <FeatureCard
+              icon={<Layers className="size-6 text-teal-400" />}
+              title="Multi-Device Ready"
+              description="Did your Garmin die and you switched to Strava? No problem. We handle different sources gracefully."
             />
           </div>
         </section>

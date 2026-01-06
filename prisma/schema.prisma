@@ -8,31 +8,48 @@ datasource db {
 }
 
 model User {
-  id        String   @id // Auth0 sub
-  email     String   @unique
-  role      String   @default("user") // "user" | "admin"
-  createdAt DateTime @default(now())
+  id        String     @id @default(cuid())
+  auth0Sub  String     @unique // Auth0 user ID
+  email     String     @unique
+  role      String     @default("user") // "user" | "admin"
+  createdAt DateTime   @default(now())
   jobs      MergeJob[]
 }
 
 model MergeJob {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  status        String        @default("PENDING") // PENDING, UPLOADING, PROCESSING, COMPLETED, FAILED
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  fragments     GpxFragment[]
-  mergedFileKey String? // S3 key for result
-  logs          String? // Processing logs
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  status       String         @default("PENDING") // PENDING, UPLOADING, PROCESSING, COMPLETED, FAILED
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  startedAt    DateTime?      // When processing began
+  finishedAt   DateTime?      // When processing ended
+  errorMessage String?        // If failed
+  
+  fragmentFiles FragmentFile[]
+  outputFiles   OutputFile[]
 }
 
-model GpxFragment {
-  id           String   @id @default(cuid())
-  jobId        String
-  job          MergeJob @relation(fields: [jobId], references: [id])
-  s3Key        String // S3 key for this fragment
-  order        Int // Order in merge
-  originalName String
-  uploadedAt   DateTime @default(now())
+model FragmentFile {
+  id               String   @id @default(cuid())
+  mergeJobId       String
+  mergeJob         MergeJob @relation(fields: [mergeJobId], references: [id], onDelete: Cascade)
+  originalFilename String
+  storageKey       String   // S3 key
+  pointCount       Int      @default(0)
+  startTime        DateTime?
+  endTime          DateTime?
+  createdAt        DateTime @default(now())
+}
+
+model OutputFile {
+  id          String   @id @default(cuid())
+  mergeJobId  String
+  mergeJob    MergeJob @relation(fields: [mergeJobId], references: [id], onDelete: Cascade)
+  storageKey  String   // S3 key
+  pointCount  Int      @default(0)
+  startTime   DateTime?
+  endTime     DateTime?
+  createdAt   DateTime @default(now())
 }
