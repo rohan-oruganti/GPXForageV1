@@ -170,7 +170,7 @@ export default function NewJobPage() {
                     </div>
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Create New Route</h1>
-                        <p className="text-muted-foreground">Upload your GPX fragments and PNG statistics.</p>
+                        <p className="text-muted-foreground">Upload your GPX and PNG files here.</p>
                     </div>
                 </div>
             </div>
