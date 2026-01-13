@@ -52,21 +52,46 @@ export default function JobDetailsPage() {
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
+        let intervalId: NodeJS.Timeout;
+
         const fetchJob = async () => {
             try {
                 const res = await fetch(`/api/merge-jobs/${id}`);
                 if (!res.ok) throw new Error("Failed to load");
                 const data = await res.json();
                 setJob(data);
-                setNewTitle(data.title || "Untitled Route");
+                if (!newTitle && data.title) setNewTitle(data.title); // Only set if empty
+
+                // Stop polling if complete or failed
+                if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+                    if (intervalId) clearInterval(intervalId);
+                }
             } catch (e) {
                 console.error(e);
-                toast.error("Could not load job details");
+                // Don't toast on poll fail to avoid spam
             } finally {
                 setLoading(false);
             }
         };
+
+        // Initial fetch
         fetchJob();
+
+        // Setup polling
+        intervalId = setInterval(() => {
+            // Only poll if we have a job and it's not done
+            setJob((prev: any) => {
+                if (prev && (prev.status === 'COMPLETED' || prev.status === 'FAILED')) {
+                    clearInterval(intervalId);
+                    return prev;
+                }
+                // Trigger fetch if not done
+                fetchJob();
+                return prev;
+            });
+        }, 2000);
+
+        return () => clearInterval(intervalId);
     }, [id]);
 
     const handleMerge = async () => {
