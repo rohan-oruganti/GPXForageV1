@@ -15,12 +15,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GPXForage - Merge Your Adventure",
+  title: "GPXForage: Tracks that make sense",
   description: "Easily merge, edit, and visualize your GPX tracks. The ultimate tool for cyclists, runners, and hikers.",
   keywords: ["GPX", "Merge GPX", "Strava", "Garmin", "Running", "Cycling", "Hiking", "Map"],
   authors: [{ name: "Rohan Oruganti", url: "https://gpxforage.com" }],
   openGraph: {
-    title: "GPXForage - Merge Your Adventure",
+    title: "GPXForage: Tracks that make sense",
     description: "Easily merge, edit, and visualize your GPX tracks.",
     url: "https://gpx-forage-0113.vercel.app",
     siteName: "GPXForage",
