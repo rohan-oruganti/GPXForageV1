@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@auth0/nextjs-auth0/client";
+import { useUser } from "@auth0/nextjs-auth0";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Assuming you have an input component
@@ -48,28 +48,15 @@ export default function LandingPage() {
                 </Button>
               </Link>
 
-              <div className="relative flex items-center py-2">
-                <span className="flex-shrink-0 text-xs text-muted-foreground px-2 bg-background z-10 mx-auto">or continue with</span>
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border/50"></span>
-                </div>
-              </div>
-
-              <div className="flex justify-center gap-4">
-                <Button variant="outline" size="icon" className="rounded-full h-12 w-12 border-border/60 box-content p-1">
-                  <Globe className="size-5" />
-                </Button>
-                <Button variant="outline" size="icon" className="rounded-full h-12 w-12 border-border/60 box-content p-1">
-                  <Apple className="size-5" />
-                </Button>
-                <Button variant="outline" size="icon" className="rounded-full h-12 w-12 border-border/60 box-content p-1">
-                  <Facebook className="size-5" />
-                </Button>
-              </div>
-
-              <div className="text-center text-sm text-muted-foreground pt-4">
+              <div className="text-center text-sm text-muted-foreground pt-4 pb-8">
                 Not a member? <Link href="/api/auth/login" className="font-bold text-accent-foreground hover:underline">Register now</Link>
               </div>
+
+              {/* Animated Illustrations Carousel - Absolutely positioned to bottom */}
+              <div className="absolute bottom-16 left-0 right-0 h-64 w-full flex items-center justify-center overflow-visible pointer-events-none">
+                <CyclingIllustrations />
+              </div>
+
             </div>
           ) : (
             <div className="space-y-6 text-center lg:text-left">
@@ -77,7 +64,7 @@ export default function LandingPage() {
                 <img src={user.picture || ''} className="size-16 rounded-full border-2 border-background shadow-sm" />
                 <div>
                   <p className="font-bold text-lg text-foreground">Hi, {user.name}</p>
-                  <p className="text-sm text-muted-foreground">Ready to forage?</p>
+                  <p className="text-sm text-muted-foreground">Ready to start?</p>
                 </div>
               </div>
               <Link href="/dashboard" className="block">
@@ -131,10 +118,78 @@ export default function LandingPage() {
         </motion.div>
 
         <div className="absolute bottom-12 text-center max-w-md px-6">
-          <h2 className="text-xl font-bold mb-2">Make your route easier and organized</h2>
-          <p className="text-muted-foreground">with GPXForage App</p>
+          <h2 className="text-xl font-bold mb-2">GPXForage:</h2>
+          <p className="text-muted-foreground">Tracks That Make Sense.</p>
         </div>
       </div>
     </div>
   );
 }
+
+
+function CyclingIllustrations() {
+  const [index, setIndex] = require("react").useState(0);
+  const images = [
+    "/illustration-dog-walker.png",
+    "/illustration-biker.png",
+    "/illustration-boater.png"
+  ];
+
+  require("react").useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev: number) => (prev + 1) % images.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="relative w-full max-w-[400px] h-full flex items-center justify-center">
+      {images.map((src, i) => {
+        const offset = (i - index + images.length) % images.length;
+
+        let x = 0;
+        let scale = 1;
+        let zIndex = 10;
+        let opacity = 1;
+        let blur = 0;
+
+        if (offset === 0) {
+          x = 0;
+          scale = 1.25;
+          zIndex = 20;
+          opacity = 1;
+        } else if (offset === 1) {
+          x = 100;
+          scale = 0.7;
+          zIndex = 10;
+          opacity = 0.5;
+          blur = 1;
+        } else {
+          x = -100;
+          scale = 0.7;
+          zIndex = 10;
+          opacity = 0.5;
+          blur = 1;
+        }
+
+        return (
+          <motion.img
+            key={src}
+            src={src}
+            className="absolute w-32 h-32 object-contain"
+            initial={false}
+            animate={{
+              x,
+              scale,
+              zIndex,
+              opacity,
+              filter: `blur(${blur}px)`
+            }}
+            transition={{ type: "spring", stiffness: 200, damping: 25 }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+

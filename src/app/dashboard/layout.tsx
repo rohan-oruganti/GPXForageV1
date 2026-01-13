@@ -1,16 +1,25 @@
-"use client";
-
 import Link from "next/link";
-import { useUser } from "@auth0/nextjs-auth0/client";
-import { LogOut } from "lucide-react";
+import { auth0 } from '@/lib/auth0';
+import { db } from '@/lib/db';
+import { LogOut, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const { user } = useUser();
+    const session = await auth0.getSession();
+    const user = session?.user;
+
+    let isAdmin = false;
+    if (user?.sub) {
+        const dbUser = await db.user.findUnique({
+            where: { auth0Sub: user.sub },
+            select: { role: true }
+        });
+        isAdmin = dbUser?.role === 'admin';
+    }
 
     return (
         <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/30">
@@ -33,6 +42,12 @@ export default function DashboardLayout({
                             <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
                                 Route Library
                             </Link>
+                            {isAdmin && (
+                                <Link href="/admin/jobs" className="text-sm font-bold text-red-600 hover:text-red-700 flex items-center gap-1">
+                                    <ShieldAlert className="size-4" />
+                                    Admin Console
+                                </Link>
+                            )}
                         </nav>
                     </div>
 

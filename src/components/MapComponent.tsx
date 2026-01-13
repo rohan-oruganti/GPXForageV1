@@ -1,10 +1,11 @@
 "use client";
 
-import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { parseGpx } from '@/lib/gpx';
 
 // Fix Leaflet icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -15,34 +16,60 @@ L.Icon.Default.mergeOptions({
 });
 
 interface MapProps {
-    gpxUrl?: string; // If merged
-    fragments?: any[]; // If fragments
+    mergedUrl?: string | null;
+    fragments?: any[]; // { url, originalFilename, ... }
 }
 
-export default function Map({ gpxUrl, fragments }: MapProps) {
-    const [tracks, setTracks] = useState<[number, number][][]>([]);
+function AutoBounds({ tracks }: { tracks: [number, number][][] }) {
+    const map = useMap();
+    useEffect(() => {
+        if (tracks.length === 0) return;
+        const bounds = L.latLngBounds(tracks.flat() as any); // Type assertion for compatibility
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }, [tracks, map]);
+    return null;
+}
+
+export default function Map({ mergedUrl, fragments }: MapProps) {
+    const [fragmentTracks, setFragmentTracks] = useState<{ id: string, name: string, points: [number, number][] }[]>([]);
+    const [mergedTrack, setMergedTrack] = useState<[number, number][]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        // Simplified logic: If gpxUrl provided, fetch and parse.
-        // For fragments, we'd need to fetch each.
-        // For now, let's just support visualization if we implement parsing in frontend too or just fetch the file.
-        // Since I don't want to duplicate parsing logic, I'll assume we can visualize if we have the lat/lons.
-        // But we don't return lat/lons from API.
-        // So I'll fetch the GPX file content and parse it using regex (simple) or DOMParser.
-
-        async function loadGpx() {
+        async function loadData() {
             setLoading(true);
             try {
-                if (gpxUrl) {
-                    const res = await fetch(gpxUrl);
+                // Load Fragments
+                if (fragments && fragments.length > 0) {
+                    const loadedFragments = await Promise.all(fragments.map(async (f) => {
+                        if (!f.url) return null;
+                        try {
+                            const res = await fetch(f.url);
+                            const text = await res.text();
+                            const points = parseGpx(text);
+                            return {
+                                id: f.id,
+                                name: f.originalFilename,
+                                points: points.map(p => [p.lat, p.lon] as [number, number])
+                            };
+                        } catch (e) {
+                            console.error("Failed to load fragment", f.originalFilename, e);
+                            return null;
+                        }
+                    }));
+                    setFragmentTracks(loadedFragments.filter(f => f !== null) as any);
+                }
+
+                // Load Merged
+                if (mergedUrl) {
+                    const res = await fetch(mergedUrl);
                     const text = await res.text();
-                    const segments = parseGpx(text);
-                    setTracks(segments);
-                } else if (fragments && fragments.length > 0) {
-                    // Fetch all fragments? Usage limits?
-                    // Let's implement this later or simplified.
-                    // For now, empty map logic.
+                    const points = parseGpx(text);
+                    setMergedTrack(points.map(p => [p.lat, p.lon]));
+                } else {
+                    setMergedTrack([]);
                 }
             } catch (e) {
                 console.error(e);
@@ -50,46 +77,45 @@ export default function Map({ gpxUrl, fragments }: MapProps) {
                 setLoading(false);
             }
         }
+        loadData();
+    }, [fragments, mergedUrl]);
 
-        loadGpx();
-    }, [gpxUrl]); // eslint-disable-line
+    if (loading) return <div className="h-full flex items-center justify-center bg-secondary/10"><Loader2 className="animate-spin text-primary" /></div>;
 
-    if (loading) return <div className="h-full flex items-center justify-center bg-gray-100"><Loader2 className="animate-spin" /></div>;
+    const allTracksForBounds = [...fragmentTracks.map(f => f.points), mergedTrack].filter(t => t.length > 0);
+    const center: [number, number] = allTracksForBounds.length > 0 && allTracksForBounds[0].length > 0 ? allTracksForBounds[0][0] : [51.505, -0.09];
 
-    // Default center
-    const center: [number, number] = tracks.length > 0 && tracks[0].length > 0 ? tracks[0][0] : [51.505, -0.09];
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
     return (
-        <MapContainer center={center} zoom={13} scrollWheelZoom={false} className="h-full w-full z-0">
+        <MapContainer center={center} zoom={13} scrollWheelZoom={true} className="h-full w-full z-0">
             <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {tracks.map((track, i) => (
-                <Polyline key={i} positions={track} color="blue" />
+
+            {/* Draw Fragments */}
+            {!mergedTrack.length && fragmentTracks.map((track, i) => (
+                <Polyline
+                    key={track.id}
+                    positions={track.points}
+                    pathOptions={{ color: colors[i % colors.length], weight: 4, opacity: 0.7 }}
+                >
+                    <Tooltip sticky>{track.name}</Tooltip>
+                </Polyline>
             ))}
+
+            {/* Draw Merged Route (if exists, maybe hide fragments or show them dimmed? User said "after merge, draw merged route") */}
+            {mergedTrack.length > 0 && (
+                <Polyline
+                    positions={mergedTrack}
+                    pathOptions={{ color: '#000000', weight: 6 }}
+                >
+                    <Tooltip sticky>Merged Route</Tooltip>
+                </Polyline>
+            )}
+
+            <AutoBounds tracks={allTracksForBounds} />
         </MapContainer>
     );
-}
-
-function parseGpx(gpxText: string): [number, number][][] {
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(gpxText, "text/xml");
-    const tracks = [];
-
-    const trks = xml.getElementsByTagName("trk");
-    for (let i = 0; i < trks.length; i++) {
-        const trksegs = trks[i].getElementsByTagName("trkseg");
-        for (let j = 0; j < trksegs.length; j++) {
-            const trkpts = trksegs[j].getElementsByTagName("trkpt");
-            const points: [number, number][] = [];
-            for (let k = 0; k < trkpts.length; k++) {
-                const lat = parseFloat(trkpts[k].getAttribute("lat") || "0");
-                const lon = parseFloat(trkpts[k].getAttribute("lon") || "0");
-                points.push([lat, lon]);
-            }
-            if (points.length > 0) tracks.push(points);
-        }
-    }
-    return tracks;
 }

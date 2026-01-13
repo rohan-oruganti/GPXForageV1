@@ -2,11 +2,36 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, FileCode, CheckCircle, AlertCircle, Clock } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Plus, Loader2, FileCode, CheckCircle, AlertCircle, Clock, Pencil, Trash2, MoreVertical } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns"; // We might need date-fns, or just use native Intl
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 // Icons map
 const StatusIcon = ({ status }: { status: string }) => {
@@ -21,40 +46,68 @@ const StatusIcon = ({ status }: { status: string }) => {
 export default function DashboardPage() {
     const [jobs, setJobs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [creating, setCreating] = useState(false);
     const router = useRouter();
 
+    // Action state
+    const [jobToDelete, setJobToDelete] = useState<string | null>(null);
+    const [jobToRename, setJobToRename] = useState<any | null>(null);
+    const [newName, setNewName] = useState("");
+
+    const fetchJobs = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/merge-jobs');
+            if (res.ok) {
+                const data = await res.json();
+                setJobs(data);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        fetch('/api/merge-jobs') // Assuming we create a GET list endpoint? Or just filter client side?
-            // Wait, I didn't implement GET /api/merge-jobs to LIST jobs.
-            // Plan said: "GET /api/merge-jobs/:id (job status)".
-            // Admin API lists jobs.
-            // I need a "List User Jobs" API.
-            // I'll assume GET /api/merge-jobs lists OWN jobs if no ID provided.
-            // If I didn't implement that, I need to update the route.
-            .then(res => {
-                if (res.ok) return res.json();
-                throw new Error('Failed to fetch');
-            })
-            .then(data => setJobs(data))
-            .catch(err => {
-                // handle error
-                console.error(err);
-            })
-            .finally(() => setLoading(false));
+        fetchJobs();
     }, []);
 
-    const createJob = async () => {
-        setCreating(true);
+    const handleDelete = async () => {
+        if (!jobToDelete) return;
         try {
-            const res = await fetch('/api/merge-jobs', { method: 'POST' });
-            if (!res.ok) throw new Error('Failed to create');
-            const job = await res.json();
-            router.push(`/dashboard/jobs/${job.id}`);
+            const res = await fetch(`/api/merge-jobs/${jobToDelete}`, { method: 'DELETE' });
+            if (res.ok) {
+                setJobs(prev => prev.filter(j => j.id !== jobToDelete));
+                toast.success("Route deleted");
+            } else {
+                toast.error("Failed to delete");
+            }
         } catch (e) {
-            console.error(e);
+            toast.error("Error deleting route");
         } finally {
-            setCreating(false);
+            setJobToDelete(null);
+        }
+    };
+
+    const handleRename = async () => {
+        if (!jobToRename) return;
+        try {
+            const res = await fetch(`/api/merge-jobs/${jobToRename.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newName })
+            });
+
+            if (res.ok) {
+                // Update local state without full refetch
+                setJobs(prev => prev.map(j => j.id === jobToRename.id ? { ...j, title: newName } : j));
+                toast.success("Renamed successfully");
+                setJobToRename(null);
+            } else {
+                toast.error("Failed to rename");
+            }
+        } catch (e) {
+            toast.error("Error renaming route");
         }
     };
 
@@ -65,10 +118,12 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">Activity Library</h1>
                     <p className="text-muted-foreground">All your adventures in one place!</p>
                 </div>
-                <Button onClick={createJob} disabled={creating} size="lg" className="shadow-lg transition-transform hover:scale-105 active:scale-95">
-                    {creating ? <Loader2 className="animate-spin mr-2" /> : <Plus className="mr-2 size-4" />}
-                    Add New Route
-                </Button>
+                <Link href="/dashboard/new">
+                    <Button size="lg" className="shadow-lg transition-transform hover:scale-105 active:scale-95">
+                        <Plus className="mr-2 size-4" />
+                        Add New Route
+                    </Button>
+                </Link>
             </div>
 
             {loading ? (
@@ -87,42 +142,107 @@ export default function DashboardPage() {
                                 Combine scattered GPX tracks from different devices into one epic continuous route.
                             </p>
                         </div>
-                        <Button onClick={createJob} disabled={creating} variant="outline" className="mt-4">Start </Button>
+                        <Link href="/dashboard/new">
+                            <Button variant="outline" className="mt-4">Start Now</Button>
+                        </Link>
                     </CardContent>
                 </Card>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {jobs.map(job => (
-                        <Link href={`/dashboard/jobs/${job.id}`} key={job.id} className="group block h-full">
-                            <Card className="h-full border border-border/50 bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <div className="font-mono text-xs text-primary/80 uppercase tracking-widest">
-                                        ID: {job.id.slice(-6)}
-                                    </div>
+                        <Card key={job.id} className="group relative flex flex-col h-full border border-border/50 bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-lg">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                                <div className="font-mono text-xs text-primary/80 uppercase tracking-widest">
+                                    ID: {job.id.slice(-6)}
+                                </div>
+                                <div className="flex items-center gap-2">
                                     <StatusIcon status={job.status} />
-                                </CardHeader>
-                                <CardContent>
-                                    <CardTitle className="text-xl font-bold text-card-foreground mb-1 group-hover:text-primary transition-colors">
-                                        Untitled Route
-                                    </CardTitle>
-                                    <CardDescription className="text-muted-foreground">
-                                        Created {new Date(job.createdAt).toLocaleDateString(undefined, {
-                                            month: 'short', day: 'numeric', year: 'numeric'
-                                        })}
-                                    </CardDescription>
 
-                                    <div className="mt-6 flex items-center gap-3">
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-xs font-medium text-secondary-foreground">
-                                            <FileCode className="size-3" />
-                                            <span>{job.fragmentFiles?.length || job.fragments?.length || 0} fragments</span>
-                                        </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                                                <MoreVertical className="size-4 text-muted-foreground" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => {
+                                                setJobToRename(job);
+                                                setNewName(job.title || "");
+                                            }}>
+                                                <Pencil className="mr-2 size-4" /> Rename
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setJobToDelete(job.id)}>
+                                                <Trash2 className="mr-2 size-4" /> Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </CardHeader>
+
+                            <CardContent className="flex-1 cursor-pointer" onClick={() => router.push(`/dashboard/jobs/${job.id}`)}>
+                                <CardTitle className="text-xl font-bold text-card-foreground mb-1 group-hover:text-primary transition-colors">
+                                    {job.title || "Untitled Route"}
+                                </CardTitle>
+                                <CardDescription className="text-muted-foreground">
+                                    Created {new Date(job.createdAt).toLocaleDateString(undefined, {
+                                        month: 'short', day: 'numeric', year: 'numeric'
+                                    })}
+                                </CardDescription>
+
+                                <div className="mt-6 flex items-center gap-3">
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-xs font-medium text-secondary-foreground">
+                                        <FileCode className="size-3" />
+                                        <span>{job.fragmentFiles?.length || job.fragments?.length || 0} fragments</span>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        </Link>
+                                </div>
+                            </CardContent>
+                        </Card>
                     ))}
                 </div>
             )}
+
+            {/* DELETE Dialog */}
+            <AlertDialog open={!!jobToDelete} onOpenChange={(open) => !open && setJobToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete this route?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your route and all associated files.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* RENAME Dialog */}
+            <Dialog open={!!jobToRename} onOpenChange={(open) => !open && setJobToRename(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Rename Route</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Label htmlFor="name" className="text-right">
+                            Name
+                        </Label>
+                        <Input
+                            id="name"
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            className="mt-2"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRename();
+                            }}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setJobToRename(null)}>Cancel</Button>
+                        <Button onClick={handleRename}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -43,3 +43,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# local scripts
+check_*.js
+fix_cors.js
+promote_admin.js
+
+# local data
+*.gpx

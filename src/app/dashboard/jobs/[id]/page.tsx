@@ -1,144 +1,340 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Play, Download, MapPin, FileText } from "lucide-react";
-import UploadDropzone from "@/components/UploadDropzone";
-import MapPreview from "@/components/MapPreview";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { ArrowLeft, Loader2, Download, Layers, PlayCircle, Pencil, Trash2, Eye, Copy, Check, Image as ImageIcon } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 
-export default function JobWorkspacePage() {
-    const { id } = useParams();
+// Dynamically import MapComponent to avoid SSR issues with Leaflet
+const MapComponent = dynamic(() => import("@/components/MapComponent"), {
+    ssr: false,
+    loading: () => <div className="h-full w-full flex items-center justify-center bg-secondary/20"><Loader2 className="animate-spin" /></div>
+});
+
+export default function JobDetailsPage() {
+    const { id } = useParams() as { id: string };
+    const router = useRouter();
     const [job, setJob] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [merging, setMerging] = useState(false);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-    const refresh = () => setRefreshTrigger(p => p + 1);
+    // Rename state
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [newTitle, setNewTitle] = useState("");
+
+    // Preview state
+    const [previewContent, setPreviewContent] = useState("");
+    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        if (!id) return;
-        fetch(`/api/merge-jobs/${id}`)
-            .then(r => {
-                if (r.ok) return r.json();
-                throw new Error('Failed to load job');
-            })
-            .then(data => setJob(data))
-            .catch(e => toast.error("Could not load job"))
-            .finally(() => setLoading(false));
-    }, [id, refreshTrigger]);
+        const fetchJob = async () => {
+            try {
+                const res = await fetch(`/api/merge-jobs/${id}`);
+                if (!res.ok) throw new Error("Failed to load");
+                const data = await res.json();
+                setJob(data);
+                setNewTitle(data.title || "Untitled Route");
+            } catch (e) {
+                console.error(e);
+                toast.error("Could not load job details");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchJob();
+    }, [id]);
 
-    const runMerge = async () => {
+    const handleMerge = async () => {
         setMerging(true);
         try {
-            const res = await fetch(`/api/merge-jobs/${id}/run`, { method: 'POST' });
-            if (!res.ok) throw new Error('Merge failed');
-            toast.success("Merge complete!");
-            refresh();
+            const res = await fetch(`/api/merge-jobs/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'MERGE' })
+            });
+            if (res.ok) {
+                const updatedJob = await res.json();
+                setJob(updatedJob);
+                toast.success("Merge complete!");
+            } else {
+                throw new Error("Merge failed");
+            }
         } catch (e) {
-            toast.error("Merge failed to start");
+            toast.error("Failed to merge");
         } finally {
             setMerging(false);
         }
     };
 
-    const downloadMerged = async () => {
+    const handleRename = async () => {
         try {
-            const res = await fetch(`/api/merge-jobs/${id}/download`);
-            if (!res.ok) throw new Error("No download available");
-            const { url } = await res.json();
-            window.location.href = url;
+            const res = await fetch(`/api/merge-jobs/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: newTitle })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setJob((prev: any) => ({ ...prev, title: updated.title }));
+                setIsEditingTitle(false);
+                toast.success("Renamed!");
+            }
         } catch (e) {
-            toast.error("Download failed");
+            toast.error("Rename failed");
         }
-    }
+    };
 
-    if (loading) return <div className="p-12 flex justify-center"><Loader2 className="animate-spin" /></div>;
-    if (!job) return <div className="p-12 text-center">Job not found</div>;
+    const handleDelete = async () => {
+        try {
+            const res = await fetch(`/api/merge-jobs/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                toast.success("Route deleted");
+                router.push('/dashboard');
+            } else {
+                throw new Error("Failed to delete");
+            }
+        } catch (e) {
+            toast.error("Could not delete route");
+        }
+    };
+
+    const handlePreview = async () => {
+        if (!mergedUrl) return;
+        setLoadingPreview(true);
+        try {
+            const res = await fetch(mergedUrl);
+            if (!res.ok) throw new Error("Failed to fetch GPX");
+            const text = await res.text();
+            setPreviewContent(text);
+        } catch (e) {
+            toast.error("Could not load GPX content");
+        } finally {
+            setLoadingPreview(false);
+        }
+    };
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(previewContent);
+        setCopied(true);
+        toast.success("Copied to clipboard");
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="size-10 animate-spin text-primary" /></div>;
+    if (!job) return <div>Job not found</div>;
+
+    const fragments = job.fragmentFiles || [];
+    const outputs = job.outputFiles || [];
+    const mergedUrl = outputs.length > 0 ? outputs[0].url : null;
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold flex items-center gap-2">
-                        Route Compilation #{job.id.slice(0, 6)}
-                        <Badge variant={job.status === 'COMPLETED' ? "default" : "secondary"}>
-                            {job.status === 'PROCESSING' ? 'STITCHING' : job.status}
-                        </Badge>
-                    </h1>
-                    <p className="text-muted-foreground text-sm">Created {new Date(job.createdAt).toLocaleString()}</p>
-                </div>
-                <div className="flex gap-2">
-                    {job.fragments?.length > 0 && job.status !== 'COMPLETED' && (
-                        <Button onClick={runMerge} disabled={merging} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                            {merging ? <Loader2 className="animate-spin mr-2 size-4" /> : <Play className="mr-2 size-4" />}
-                            Stitch Tracks
+        <div className="h-[calc(100vh-100px)] flex flex-col space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                    <Link href="/dashboard">
+                        <Button variant="ghost" size="icon" className="rounded-full">
+                            <ArrowLeft className="size-5" />
                         </Button>
-                    )}
-                    {job.status === 'COMPLETED' && (
-                        <Button onClick={downloadMerged} variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:scale-105 transition-transform">
-                            <Download className="mr-2 size-4" /> Download Route
+                    </Link>
+                    <div>
+                        <div className="flex items-center gap-3">
+                            {isEditingTitle ? (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        className="text-2xl font-bold bg-transparent border-b border-primary focus:outline-none"
+                                        value={newTitle}
+                                        onChange={(e) => setNewTitle(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <Button size="sm" onClick={handleRename}>Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setIsEditingTitle(false)}>Cancel</Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 group">
+                                    <h1 className="text-2xl font-bold">{job.title || "Untitled Route"}</h1>
+                                    <button onClick={() => setIsEditingTitle(true)} className="text-muted-foreground hover:text-primary transition-colors">
+                                        <Pencil className="size-4" />
+                                    </button>
+                                </div>
+                            )}
+                            <Badge variant={job.status === 'COMPLETED' ? 'default' : 'secondary'}>{job.status}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground font-mono">ID: {job.id}</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {/* Delete Button */}
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors">
+                                <Trash2 className="size-5" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this route?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete your route and all associated files.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Actions */}
+                    {job.status === 'COMPLETED' && mergedUrl ? (
+                        <div className="flex gap-2">
+                            {/* Preview Button */}
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" onClick={handlePreview}>
+                                        <Eye className="mr-2 size-4" /> Preview
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+                                    <DialogHeader>
+                                        <DialogTitle className="flex items-center justify-between">
+                                            <span>GPX File Content</span>
+                                            <Button size="sm" variant="ghost" onClick={copyToClipboard}>
+                                                {copied ? <Check className="size-4 mr-1" /> : <Copy className="size-4 mr-1" />}
+                                                {copied ? "Copied" : "Copy"}
+                                            </Button>
+                                        </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="flex-1 overflow-auto bg-muted p-4 rounded-md border text-xs font-mono whitespace-pre-wrap">
+                                        {loadingPreview ? (
+                                            <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+                                        ) : (
+                                            previewContent || "No content loaded."
+                                        )}
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+
+                            <a href={mergedUrl} download={`merged-${job.id}.gpx`}>
+                                <Button className="shadow-lg shadow-primary/20" variant="default">
+                                    <Download className="mr-2 size-4" /> Download GPX
+                                </Button>
+                            </a>
+                        </div>
+                    ) : (
+                        <Button onClick={handleMerge} disabled={merging || job.status === 'COMPLETED'} className="shadow-lg">
+                            {merging ? <Loader2 className="animate-spin mr-2" /> : <PlayCircle className="mr-2 size-4" />}
+                            {job.status === 'COMPLETED' ? 'Processing...' : 'Merge Fragments'}
                         </Button>
                     )}
                 </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
-                {/* Left Col: Upload & Fragments */}
-                <div className="md:col-span-1 space-y-6">
-                    {job.status !== 'COMPLETED' && (
-                        <Card className="bg-card border-dashed border-2 border-border/60 hover:border-primary/40 transition-colors">
-                            <CardHeader><CardTitle className="text-base text-foreground">Add Track Segments</CardTitle></CardHeader>
-                            <CardContent>
-                                <UploadDropzone jobId={job.id} onUploadComplete={refresh} />
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    <Card className="bg-card">
-                        <CardHeader><CardTitle className="text-base text-card-foreground">Track Segments ({job.fragments?.length || 0})</CardTitle></CardHeader>
-                        <CardContent className="space-y-2">
-                            {job.fragments?.map((f: any, i: number) => (
-                                <div key={f.id} className="flex items-center gap-2 text-sm p-3 bg-secondary/50 rounded-lg border border-border/50">
-                                    <div className="size-6 bg-background rounded flex items-center justify-center font-mono text-xs font-bold text-muted-foreground border">
-                                        {i + 1}
-                                    </div>
-                                    <span className="truncate flex-1 text-foreground font-medium">{f.originalName}</span>
-                                    <Badge variant="outline" className="text-[10px] text-muted-foreground border-border">GPX</Badge>
-                                </div>
-                            ))}
-                            {(!job.fragments || job.fragments.length === 0) && (
-                                <p className="text-sm text-muted-foreground text-center py-4 italic">No tracks uploaded yet.</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Right Col: Preview */}
-                <div className="md:col-span-2">
-                    <Card className="h-[600px] flex flex-col bg-card overflow-hidden border-border/50 relative group">
-                        <CardHeader className="py-4 border-b border-border/50 bg-background/50 backdrop-blur z-10 absolute w-full">
-                            <CardTitle className="text-base flex items-center gap-2 text-foreground"><MapPin className="size-4 text-primary" /> Route Visualization</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-1 p-0 relative bg-neutral-100 dark:bg-neutral-900 overflow-hidden">
-                            {job.status === 'COMPLETED' ? (
-                                <MapPreview gpxUrl={`/api/merge-jobs/${job.id}/download`} />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground bg-secondary/20">
-                                    <div className="text-center p-8 rounded-2xl bg-background/80 backdrop-blur border border-border/50 shadow-sm">
-                                        <MapPin className="size-12 mx-auto mb-4 text-primary/40" />
-                                        <h3 className="text-lg font-bold text-foreground">No Route Preview</h3>
-                                        <p className="text-sm">Upload and stitch your tracks to see the route here.</p>
+            {/* Main Layout */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+                {/* Left: Sidebar (Fragments & Stats) */}
+                <Card className="lg:col-span-1 flex flex-col h-full overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm">
+                    <CardHeader className="pb-3 shrink-0">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Layers className="size-5 text-primary" />
+                            Fragments
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3">
+                        {fragments.map((f: any, i: number) => (
+                            <div key={f.id} className="p-3 rounded-lg border border-border/50 bg-secondary/20 text-sm">
+                                <div className="font-medium truncate mb-1" title={f.originalFilename}>{f.originalFilename}</div>
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-2">
+                                        <div className="size-3 rounded-full" style={{ backgroundColor: getColor(i) }} />
+                                        <span>Segment {i + 1}</span>
                                     </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            </div>
+                        ))}
+
+                        {/* Route Photos Section */}
+                        {job.routeImages && job.routeImages.length > 0 && (
+                            <div className="pt-4 mt-4 border-t border-border/50">
+                                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    <ImageIcon className="size-4 text-primary" />
+                                    Route Photos
+                                </h3>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {job.routeImages.map((img: any) => (
+                                        <Dialog key={img.id}>
+                                            <DialogTrigger asChild>
+                                                <div className="relative aspect-square rounded-md overflow-hidden border border-border/50 cursor-pointer hover:opacity-90 transition-opacity bg-neutral-100 dark:bg-neutral-800">
+                                                    <Image
+                                                        src={img.url}
+                                                        alt="Route photo"
+                                                        fill
+                                                        className="object-cover"
+                                                        unoptimized
+                                                    />
+                                                </div>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-4xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+                                                <div className="relative w-full h-[80vh] pointer-events-auto">
+                                                    <Image
+                                                        src={img.url}
+                                                        alt="Route photo full"
+                                                        fill
+                                                        className="object-contain"
+                                                        unoptimized
+                                                    />
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Right: Map */}
+                <div className="lg:col-span-2 h-full rounded-2xl overflow-hidden border border-border bg-neutral-100 dark:bg-neutral-800 relative shadow-inner">
+                    <MapComponent
+                        fragments={fragments}
+                        mergedUrl={mergedUrl}
+                    />
                 </div>
             </div>
         </div>
     );
+}
+
+// Simple color cycler for consistent UI
+function getColor(index: number) {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    return colors[index % colors.length];
 }

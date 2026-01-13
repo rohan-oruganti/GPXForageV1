@@ -14,11 +14,13 @@ model User {
   role      String     @default("user") // "user" | "admin"
   createdAt DateTime   @default(now())
   jobs      MergeJob[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model MergeJob {
   id           String         @id @default(cuid())
   userId       String
+  title        String         @default("Untitled Route")
   user         User           @relation(fields: [userId], references: [id])
   status       String         @default("PENDING") // PENDING, UPLOADING, PROCESSING, COMPLETED, FAILED
   createdAt    DateTime       @default(now())
@@ -29,6 +31,7 @@ model MergeJob {
   
   fragmentFiles FragmentFile[]
   outputFiles   OutputFile[]
+  routeImages   RouteImage[]
 }
 
 model FragmentFile {
@@ -52,4 +55,25 @@ model OutputFile {
   startTime   DateTime?
   endTime     DateTime?
   createdAt   DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  eventType String   // e.g. LOGIN, MERGE_CREATED, MERGE_COMPLETED, UPLOAD
+  meta      Json?    // e.g. { durationMs: 1200, country: "US", fileCount: 3 }
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model RouteImage {
+  id               String   @id @default(cuid())
+  mergeJobId       String
+  mergeJob         MergeJob @relation(fields: [mergeJobId], references: [id], onDelete: Cascade)
+  originalFilename String
+  storageKey       String   // S3 key
+  mimeType         String   @default("image/png")
+  sizeBytes        Int      @default(0)
+  createdAt        DateTime @default(now())
 }

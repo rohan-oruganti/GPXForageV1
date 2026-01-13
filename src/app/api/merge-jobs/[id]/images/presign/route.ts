@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         const { id: jobId } = await params;
-        const { files } = await req.json(); // Expects { files: [{ name: string, size: number }] }
+        const { files } = await req.json(); // Expects { files: [{ name: string, size: number, type: string }] }
 
         if (!files || !Array.isArray(files)) {
             return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -31,23 +31,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         const presignedUrls = await Promise.all(files.map(async (file: any) => {
             const fileId = randomUUID();
-            const key = `jobs/${jobId}/fragments/${fileId}-${file.name}`;
+            const key = `jobs/${jobId}/images/${fileId}-${file.name}`;
 
             const command = new PutObjectCommand({
                 Bucket: BUCKET_NAME,
                 Key: key,
-                ContentType: 'application/gpx+xml',
-                // Optional: ChecksumSHA256 could be added if we calculate it on client
+                ContentType: file.type || 'image/png',
             });
 
             const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
-            // Create fragment record in DB
-            await db.fragmentFile.create({
+            // Create RouteImage record in DB
+            await db.routeImage.create({
                 data: {
                     mergeJobId: jobId,
                     originalFilename: file.name,
                     storageKey: key,
+                    mimeType: file.type || 'image/png',
+                    sizeBytes: file.size || 0
                 }
             });
 
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json(presignedUrls);
 
     } catch (error) {
-        console.error('Error generating presigned URLs:', error);
+        console.error('Error generating presigned URLs for images:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -1,18 +1,18 @@
-import { getSession } from '@auth0/nextjs-auth0';
+import { auth0 } from '@/lib/auth0';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { s3Client, BUCKET_NAME } from '@/lib/s3';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const session = await getSession();
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }) {
+    const session = await auth0.getSession();
     if (!session?.user) {
         return new NextResponse('Unauthorized', { status: 401 });
     }
 
     const { sub } = session.user;
-    const { id } = await params;
+    const { id } = await props.params;
 
     try {
         const job = await db.mergeJob.findUnique({
