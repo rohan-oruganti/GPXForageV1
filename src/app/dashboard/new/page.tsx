@@ -252,9 +252,9 @@ export default function NewJobPage() {
                                     <ImageIcon className="size-8 text-muted-foreground group-hover:text-primary transition-colors" />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-lg">Drop PNG Statistics Here</p>
+                                    <p className="font-bold text-lg">Drop PNG Files Here</p>
                                     <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                                        Upload summary screens to capture pace, calories, and temp.
+                                        Upload summary screens to analyze pace, calories, and time.
                                     </p>
                                 </div>
                             </label>

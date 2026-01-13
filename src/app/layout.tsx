@@ -15,8 +15,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GPXForage",
-  description: "Merge GPX files easily",
+  title: "GPXForage - Merge Your Adventure",
+  description: "Easily merge, edit, and visualize your GPX tracks. The ultimate tool for cyclists, runners, and hikers.",
+  keywords: ["GPX", "Merge GPX", "Strava", "Garmin", "Running", "Cycling", "Hiking", "Map"],
+  authors: [{ name: "Rohan Oruganti", url: "https://gpxforage.com" }],
+  openGraph: {
+    title: "GPXForage - Merge Your Adventure",
+    description: "Easily merge, edit, and visualize your GPX tracks.",
+    url: "https://gpx-forage-0113.vercel.app",
+    siteName: "GPXForage",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "GPXForage Preview",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GPXForage",
+    description: "Easily merge, edit, and visualize your GPX tracks.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({
