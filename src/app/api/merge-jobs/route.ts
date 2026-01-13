@@ -42,17 +42,37 @@ export async function POST(req: NextRequest) {
         }
 
         // Ensure user exists
-        const user = await db.user.upsert({
-            where: { auth0Sub: session.user.sub },
-            create: {
-                auth0Sub: session.user.sub,
-                email: session.user.email || "",
-                role: 'user'
-            },
-            update: {
-                email: session.user.email
-            }
+        // Ensure user exists (Handle potential email collisions)
+        const email = session.user.email || "";
+        const auth0Sub = session.user.sub;
+
+        let user = await db.user.findUnique({
+            where: { auth0Sub },
         });
+
+        if (!user && email) {
+            // Check if user exists by email (account linking)
+            const existingByEmail = await db.user.findUnique({
+                where: { email },
+            });
+            if (existingByEmail) {
+                // Link the new Auth0 ID to the existing user
+                user = await db.user.update({
+                    where: { id: existingByEmail.id },
+                    data: { auth0Sub },
+                });
+            }
+        }
+
+        if (!user) {
+            user = await db.user.create({
+                data: {
+                    auth0Sub,
+                    email,
+                    role: 'user'
+                },
+            });
+        }
 
         const job = await db.mergeJob.create({
             data: {
